@@ -6,6 +6,8 @@ library(quanteda.textstats)
 library(quanteda.sentiment)
 library(tidytext)
 library(BSDA)
+library(stats)
+library(sf)
 
 setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
 #setwd("C:/Users/nod086/Downloads/GeoAppeals")
@@ -117,7 +119,7 @@ count_mentions_in_state <- function(corpus, text_field, placenames,
 #returns dataframe of message, bioguide information, and place-counts and proportions
 
 run_count_mentions_in_state <- function(corpus, state_name){
-  corpus_state <- corpus %>% corpus_subset(state == state_name)
+  corpus_state <- corpus %>% corpus_subset(state.name == state_name)
   out <- count_mentions_in_state(corpus = corpus_state,
                                  text_field = "Message",
                                  placenames = state_name )
@@ -130,21 +132,87 @@ run_count_mentions_in_state <- function(corpus, state_name){
 full <- run_count_mentions_in_state(corpus = corpus, 
                                      state_name = state.name[1])
 for(i in 2:length(state.name)){
+  print(i)
   out <- run_count_mentions_in_state(corpus = corpus, 
                                      state_name = state.name[i]) 
   full <- rbind(full, out)
 }
 
+#save the resulting dataframe to workspace 
+save(fill, file="data/newsletters_with_state_mentions.csv")
+
 #do some mutation of variables 
 test <- full %>% 
-  mutate(number_tokens = as.numeric(number_tokens),
-         total_words = as.numeric(total_words),
-         place_mentions = as.numeric(place_mentions),
-         place_mentions_prop = as.numeric(place_mentions_prop)) %>% 
-  filter(total_words > 500) %>% 
-  select(-date, -id_num) %>% 
+  rename(text = value) %>% 
+ # mutate(total_words = as.numeric(total_words),
+  #       place_mentions = as.numeric(place_mentions),
+   #      place_mentions_prop = as.numeric(place_mentions_prop)) %>% 
+  #filter(total_words > 500) %>% 
+  select(-id_num, -text, -Subject) %>% 
   arrange(-place_mentions_prop)
 
 
 
+test <- test %>% filter(total_words > 100) %>% 
+  mutate(party_type = paste(party, type, sep = "-"))
+
+# create summarized df of mentions by MP
+mentions_by_mp <- test %>% 
+  group_by(name.official_full, state, state.name, district, type, party, sex, Race) %>% 
+  summarize(total_mentions = sum(place_mentions, na.rm = TRUE),
+            total_words = sum(total_words, na.rm = TRUE), 
+            prop_mentions = total_mentions / total_words) %>%
+  arrange(-prop_mentions)
+
+# create summarized df of mentions by state
+mentions_by_state_party <- mentions_by_mp %>% 
+  group_by(state, state.name, party ) %>% 
+  summarize(total_mentions = sum(total_mentions, na.rm = TRUE),
+            total_words = sum(total_words, na.rm = TRUE), 
+            prop_mentions = total_mentions / total_words) %>%
+  arrange(-prop_mentions)
+
+# create a few density plots 
+doc_newsletter_density_by_party <- ggplot(test) + 
+  geom_density(aes(x = place_mentions_prop, color = party)) + 
+  theme_minimal() + 
+  labs(title = "Density plot of one's own state-name mentions",
+      x = "% of words that are one's own state", 
+      y = "Density")
+
+doc_density_by_type <- ggplot(test) + 
+  geom_density(aes(x = place_mentions_prop, color = party_type)) + 
+  theme_minimal() + 
+  labs(title = "Density plot of one's own state-name mentions",
+       x = "% of words that are one's own state", 
+       y = "Density")
+
+mp_density_by_party <- mentions_by_mp %>% 
+  ggplot() + 
+  geom_density(aes(x = prop_mentions, color = party)) + 
+  theme_minimal() + 
+  labs(title = "Density plot of one's own state-name mentions, by MP",
+       x = "% of words that are one's own state",
+       y = "Density")
+
+# prop_mentions by state and party 
+
+ggplot(mentions_by_state_party) + 
+  geom_point(aes(x = reorder(state, -prop_mentions),
+               y = prop_mentions, color = party)) + 
+  theme_minimal() + 
+  labs(x = "State",
+       y = "% total words own-state mentions", 
+       title = "% total words own-state mentions, by state and party")
+
+
+
+# read in shapefile of us states
+shp <- st_read("data/shapefiles/cb_2018_us_state_500k.shp")
+
+
+shp %>% 
+  filter(NAME %in% state.name, NAME != "Hawaii", NAME!="Alaska") %>% 
+  ggplot() + 
+  geom_sf()
 
