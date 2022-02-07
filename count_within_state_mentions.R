@@ -10,11 +10,11 @@ library(stats)
 library(sf)
 
 setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
-#setwd("C:/Users/nod086/Downloads/GeoAppeals")
+#setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
 news <- read_csv("data/all_newsletters.csv")
 
 #take sample 
-news <- news %>% sample_n(size = nrow(news)/10)
+news <- news %>% sample_n(size = nrow(news))
 
 news$doc_id <- seq(1, nrow(news), 1)
 quanteda_options(threads = 6)
@@ -139,72 +139,11 @@ for(i in 2:length(state.name)){
 }
 
 #save the resulting dataframe to workspace 
-save(fill, file="data/newsletters_with_state_mentions.csv")
-
-#do some mutation of variables 
-test <- full %>% 
-  rename(text = value) %>% 
- # mutate(total_words = as.numeric(total_words),
-  #       place_mentions = as.numeric(place_mentions),
-   #      place_mentions_prop = as.numeric(place_mentions_prop)) %>% 
-  #filter(total_words > 500) %>% 
-  select(-id_num, -text, -Subject) %>% 
-  arrange(-place_mentions_prop)
+save(full, file="data/newsletters_with_state_mentions.csv")
+saveRDS(full, "data/newsletters_with_state_mentions.rds")
 
 
-
-test <- test %>% filter(total_words > 100) %>% 
-  mutate(party_type = paste(party, type, sep = "-"))
-
-# create summarized df of mentions by MP
-mentions_by_mp <- test %>% 
-  group_by(name.official_full, state, state.name, district, type, party, sex, Race) %>% 
-  summarize(total_mentions = sum(place_mentions, na.rm = TRUE),
-            total_words = sum(total_words, na.rm = TRUE), 
-            prop_mentions = total_mentions / total_words) %>%
-  arrange(-prop_mentions)
-
-# create summarized df of mentions by state
-mentions_by_state_party <- mentions_by_mp %>% 
-  group_by(state, state.name, party ) %>% 
-  summarize(total_mentions = sum(total_mentions, na.rm = TRUE),
-            total_words = sum(total_words, na.rm = TRUE), 
-            prop_mentions = total_mentions / total_words) %>%
-  arrange(-prop_mentions)
-
-# create a few density plots 
-doc_newsletter_density_by_party <- ggplot(test) + 
-  geom_density(aes(x = place_mentions_prop, color = party)) + 
-  theme_minimal() + 
-  labs(title = "Density plot of one's own state-name mentions",
-      x = "% of words that are one's own state", 
-      y = "Density")
-
-doc_density_by_type <- ggplot(test) + 
-  geom_density(aes(x = place_mentions_prop, color = party_type)) + 
-  theme_minimal() + 
-  labs(title = "Density plot of one's own state-name mentions",
-       x = "% of words that are one's own state", 
-       y = "Density")
-
-mp_density_by_party <- mentions_by_mp %>% 
-  ggplot() + 
-  geom_density(aes(x = prop_mentions, color = party)) + 
-  theme_minimal() + 
-  labs(title = "Density plot of one's own state-name mentions, by MP",
-       x = "% of words that are one's own state",
-       y = "Density")
-
-# prop_mentions by state and party 
-
-ggplot(mentions_by_state_party) + 
-  geom_point(aes(x = reorder(state, -prop_mentions),
-               y = prop_mentions, color = party)) + 
-  theme_minimal() + 
-  labs(x = "State",
-       y = "% total words own-state mentions", 
-       title = "% total words own-state mentions, by state and party")
-
+# all subsequent data manipulation is performed in the r markdown 
 
 
 # read in shapefile of us states

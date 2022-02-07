@@ -1,0 +1,118 @@
+---
+title: "State mentions"
+author: "Noah Daponte-Smith"
+date: "2/7/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
+df <- readRDS("data/newsletters_with_state_mentions.rds")
+df <- df %>% rename(text = value)
+```
+
+Note that the data is not perfectly clean (though I did remove addresses) and that I use only newsletters with >500 total words. I am simply counting the number of times each newsletter mentions the name of the member's own state. 
+
+```{r echo = FALSE}
+
+# do some mutation of variables 
+test <- df %>% 
+  select(-id_num, -text, -Subject) %>% 
+  arrange(-place_mentions_prop)
+
+
+
+
+test <- test %>% filter(total_words > 500) %>% 
+  mutate(party_type = paste(party, type, sep = "-"))
+
+# create summarized df of mentions by MP
+mentions_by_mp <- test %>% 
+  group_by(name.official_full, state, state.name, district, type, party, sex, Race) %>% 
+  summarize(total_mentions = sum(place_mentions, na.rm = TRUE),
+            total_words = sum(total_words, na.rm = TRUE), 
+            prop_mentions = total_mentions / total_words) %>%
+  arrange(-prop_mentions) %>% 
+  filter(party != "Independent")
+
+# create summarized df of mentions by state
+mentions_by_state_party <- mentions_by_mp %>% 
+  group_by(state, state.name, party ) %>% 
+  summarize(total_mentions = sum(total_mentions, na.rm = TRUE),
+            total_words = sum(total_words, na.rm = TRUE), 
+            prop_mentions = total_mentions / total_words) %>%
+  arrange(-prop_mentions) %>% 
+  filter(party != "Independent")
+
+# create a few density plots 
+doc_newsletter_density_by_party <- test %>% 
+  filter(party != "Independent") %>% 
+  ggplot() + 
+  geom_density(aes(x = place_mentions_prop, color = party)) + 
+  theme_minimal() + 
+  labs(title = "Density plot of one's own state-name mentions",
+      x = "% of words that are one's own state", 
+      y = "Density")
+
+doc_density_by_type <- test %>% 
+  filter(party != "Independent") %>% 
+  ggplot() + 
+  geom_density(aes(x = place_mentions_prop, color = party_type)) + 
+  theme_minimal() + 
+  labs(title = "Density plot of one's own state-name mentions",
+       x = "% of words that are one's own state", 
+       y = "Density")  +
+  scale_color_manual(values = c("Republican-rep" = "deeppink4",
+                                "Republican-sen" = "red1",
+                                "Democrat-rep" = "dodgerblue1",
+                                "Democrat-sen" = "blue")) 
+
+mp_density_by_party <- mentions_by_mp %>% 
+  ggplot() + 
+  geom_density(aes(x = prop_mentions, color = party)) + 
+  theme_minimal() + 
+  labs(title = "Density plot of one's own state-name mentions, by MP",
+       x = "% of words that are one's own state",
+       y = "Density") + 
+    scale_color_manual(values = c("Republican" = "red",
+                                "Democrat" = "blue")) 
+
+mp_density_by_party_type <- mentions_by_mp %>% 
+  mutate(party_type = paste(party, type, sep = "-")) %>% 
+  ggplot() + 
+  geom_density(aes(x = prop_mentions, color = party_type)) + 
+  theme_minimal() +
+  scale_color_manual(values = c("Republican-rep" = "deeppink4",
+                                "Republican-sen" = "red1",
+                                "Democrat-rep" = "dodgerblue1",
+                                "Democrat-sen" = "blue")) 
+
+
+
+mp_density_by_party
+mp_density_by_party_type
+doc_density_by_type
+doc_newsletter_density_by_party
+
+```
+
+
+
+```{r echo=FALSE, fig.width=12, fig.height=4}
+# prop_mentions by state and party 
+
+ggplot(mentions_by_state_party) + 
+  geom_point(aes(x = reorder(state, -prop_mentions),
+               y = prop_mentions, color = party)) + 
+  theme_minimal() + 
+  labs(x = "State",
+       y = "% total words own-state mentions", 
+       title = "% total words own-state mentions, by state and party") + 
+    scale_color_manual(values = c("Republican" = "red",
+                                "Democrat" = "blue")) 
+
+
+
+```
