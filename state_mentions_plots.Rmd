@@ -11,7 +11,6 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 #setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
 setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
 df <- readRDS("data/newsletters_with_state_mentions.rds")
-df <- df %>% rename(text = value)
 ```
 
 Note that the data is not perfectly clean (though I did remove addresses) and that I use only newsletters with >500 total words. I am simply counting the number of times each newsletter mentions the name of the member's own state. 
@@ -20,14 +19,8 @@ Note that the data is not perfectly clean (though I did remove addresses) and th
 
 # do some mutation of variables 
 test <- df %>% 
-  select(-text) %>% 
-  arrange(-place_mentions_prop)
-
-
-
-
-test <- test %>% filter(total_words > 500) %>% 
-  mutate(party_type = paste(party, type, sep = "-"))
+  arrange(-place_mentions_prop) %>% 
+  filter(total_words > 250)
 
 # create summarized df of mentions by MP
 mentions_by_mp <- test %>% 
@@ -60,15 +53,13 @@ doc_newsletter_density_by_party <- test %>%
 doc_density_by_type <- test %>% 
   filter(party != "Independent") %>% 
   ggplot() + 
-  geom_density(aes(x = place_mentions_prop, color = party_type)) + 
+  geom_density(aes(x = place_mentions_prop, color = party, linetype = type)) + 
   theme_minimal() + 
   labs(title = "Density plot of one's own state-name mentions",
        x = "% of words that are one's own state", 
        y = "Density")  +
-  scale_color_manual(values = c("Republican-rep" = "deeppink4",
-                                "Republican-sen" = "red1",
-                                "Democrat-rep" = "dodgerblue1",
-                                "Democrat-sen" = "blue")) 
+  scale_color_manual(values = c("Republican" = "red",
+                                "Democrat" = "blue"))
 
 mp_density_by_party <- mentions_by_mp %>% 
   ggplot() + 
