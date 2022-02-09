@@ -8,7 +8,8 @@ output: pdf_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
+#setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
+setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
 df <- readRDS("data/newsletters_with_state_mentions.rds")
 df <- df %>% rename(text = value)
 ```
@@ -19,7 +20,7 @@ Note that the data is not perfectly clean (though I did remove addresses) and th
 
 # do some mutation of variables 
 test <- df %>% 
-  select(-id_num, -text, -Subject) %>% 
+  select(-text) %>% 
   arrange(-place_mentions_prop)
 
 

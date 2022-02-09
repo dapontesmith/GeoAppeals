@@ -138,8 +138,14 @@ for(i in 2:length(state.name)){
   full <- rbind(full, out)
 }
 
+# fix some class issues with the text variable - they go away if you as.character() it 
+full <- full %>% 
+  mutate(text = as.character(value)) %>% 
+  select(-value)
+
 #save the resulting dataframe to workspace 
-save(full, file="data/newsletters_with_state_mentions.csv")
+## ONLY SAVE IF IT IS THE FULL DATAFRAME
+write.csv(full, file="data/newsletters_with_state_mentions.csv", fileEncoding = "UTF8")
 saveRDS(full, "data/newsletters_with_state_mentions.rds")
 
 
