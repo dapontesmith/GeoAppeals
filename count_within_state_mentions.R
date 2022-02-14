@@ -40,10 +40,10 @@ news <- left_join(news, bios_unique,
 corpus <- corpus(news, text_field = "Message",
                  docnames = news$doc_id)
 corp_sentences <- corpus_reshape(corpus, to = "sentences")
-docvars(corpus, "number_tokens") <- ntoken(corpus, remove_punct = TRUE)
-docvars(corpus, "date") <- news$Date
-docvars(corpus, "bioguide_id") <- news$bioguide_id
-docvars(corpus, "state") <- news$state.name
+docvars(corp_sentences, "number_tokens") <- ntoken(corp_sentences, remove_punct = TRUE)
+docvars(corp_sentences, "date") <- news$Date
+docvars(corp_sentences, "bioguide_id") <- news$bioguide_id
+docvars(corp_sentences, "state") <- news$state.name
 
 #create vector of zip codes
 zips <- as.character(seq(1, 99999, 1))
