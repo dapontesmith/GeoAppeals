@@ -8,6 +8,7 @@ library(quanteda.textstats)
 library(quanteda.sentiment)
 library(quanteda.tidy)
 library(tidytext)
+library(stats)
 library(BSDA)
 
 setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
@@ -92,8 +93,8 @@ toks_no_stop <- tokens_select(tokens,
 #get word count per document
 dfm <- dfm(tokens)
 #trim the dfm so it doesn't break - these parameters may need tuning
-dfmtrimmed <- dfm_trim(dfm, min_docfreq = min_docfreq,
-                       min_termfreq = min_termfreq, verbose = TRUE)
+dfmtrimmed <- dfm_trim(dfm, min_docfreq = 50,
+                       min_termfreq = 50, verbose = TRUE)
 
 dfm <- convert(dfmtrimmed, to = "data.frame") %>%
   as_tibble() %>%
@@ -108,6 +109,7 @@ dict_tibble <- dfm_dict_toks %>%
   dplyr::select(-doc_id)
 
 #assign variables 
+#docvars(corpus, "total_words") <- rowSums(dfm)
 corpus <- corpus %>% 
   mutate(total_words = rowSums(dfm), # total words variable
          place_mentions = rowSums(dict_tibble), # number of place mentions
@@ -129,6 +131,19 @@ dict_output$sent_score <- log((dict_output$positive +
                                 (dict_output$negative +
                                    dict_output$neg_positive+ 0.5))
 dict_output <- cbind(dict_output, docvars(corpus))
+
+dict_output %>% 
+  filter(total_words > 500, 
+         party %in% c("Republican","Democrat"),
+         place_mentions_prop > 0.0001) %>% 
+  group_by(name.official_full, party) %>% 
+  summarize(total_sentiment = weighted.mean(sent_score, w = total_words),
+            place_mentions = weighted.mean(place_mentions_prop, w = total_words)) %>% 
+  ungroup() %>% 
+  ggplot(aes(y = total_sentiment, x = place_mentions, color = party)) + 
+  geom_point() + 
+  geom_smooth() + 
+  theme_minimal()
 
 
 
