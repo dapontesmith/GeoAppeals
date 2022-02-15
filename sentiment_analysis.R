@@ -1,6 +1,9 @@
 # Goal of this file - 
 # To do analyses that show patterns of place-name use, beyond mere counts 
 
+# contains functions that count place-name mentions
+# and get sentiment scores for every newsletter in the corpus 
+
 #load relevant libraries 
 library(tidyverse)
 library(quanteda)
@@ -11,14 +14,14 @@ library(tidytext)
 library(stats)
 library(BSDA)
 
-setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
-#setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
+#setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
+setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
 
 # set up the corpus 
 news <- read_csv("data/all_newsletters.csv")
 
 #take sample 
-news <- news %>% sample_n(size = nrow(news)/20)
+news <- news %>% sample_n(size = nrow(news)/2)
 
 news$doc_id <- seq(1, nrow(news), 1)
 quanteda_options(threads = 6)
@@ -46,8 +49,9 @@ zips <- as.character(seq(1, 99999, 1))
 
 
 corpus_orig <- corpus(news, text_field = "Message",
-                 docnames = news$doc_id) %>%
-  mutate(number_tokens = ntoken(corpus, remove_punct = TRUE),
+                 docnames = news$doc_id)
+corpus_orig <- corpus_orig %>% 
+  mutate(number_tokens = ntoken(corpus_orig, remove_punct = TRUE),
          date = news$Date, 
          bioguide_id = news$bioguide_id, 
          state = news$state.name) 
@@ -66,88 +70,122 @@ corpus <- corpus_reshape(corp_sentences, to = "documents")
 # DETECT WHETHER PLACE-NAME APPEARS IN DOCUMENT 
 ############################################################
 
-placenames <- c("Washington","Washington, D.C.","washington")
+get_sentiments <- function(corpus,                        
+                           text_field,
+                                      placenames,
+                                      min_docfreq = 50, 
+                                      min_termfreq = 50,
+                                      dictionary){
+  # SENTIMENT ANALYSIS - tokenize and apply dictionary
+  sent_dict <- corpus %>% 
+    tokens() %>% 
+    tokens_lookup(dictionary = dictionary)
+  
+  # transform to a dfm and convert to dataframe
+  dfmat_dict <- dfm(sent_dict)
+  dict_output <- convert(dfmat_dict, to = "data.frame")
+  
+  # create sentiment score (this is from benoit slides)
+  
+  dict_output$sentscore <- log((dict_output$positive + 
+                                  dict_output$neg_negative + 0.5) / 
+                                 (dict_output$negative + 
+                                    dict_output$neg_positive + 0.5))
+  dict_output <- cbind(dict_output, docvars(corpus)) 
+  return(dict_output)
+}
+# define function for getting place-name mentions from documens
+get_mentions <- function(corpus, text_field, placenames,
+                         min_docfreq = 50, min_termfreq = 50){
+  # define dictionary 
+  places <- as.list(placenames)
+  names(places) <- placenames
+  places_dict <- dictionary(places)
+  
+  # make into a tokens object
+  tokens <- tokens(corpus, remove_punct = TRUE,
+                   remove_numbers = FALSE,
+                   remove_url = TRUE,
+                   remove_symbols = FALSE)
+  
 
-#text_field = character, name of text column in df
-#corpus = corpus (created above) 
-#placenames = vector of placenames to c ount
-places <- as.list(placenames)
-names(places) <- placenames
-places_dict <- dictionary(places)
+   #remove stopwords via tokens_select
+   toks_no_stop <- tokens_select(tokens,
+                                 pattern = stopwords(language="en",source="marimo"),
+                                 selection = 'remove')
+   
+   # get word count per document
+   dfm <- dfm(toks_no_stop)
+   # trim the dfm so as to reduce computational needs
+   dfmtrimmed <- dfm_trim(dfm, min_docfreq = 50,
+                          min_termfreq = 50, verbost = TRUE)
+   # convert to a dataframe
+   dfm <- convert(dfmtrimmed, to = "data.frame") %>% 
+     as_tibble() %>% 
+     select(-doc_id)
+   
+   # get number of mentions of places per document in the corpus
+   dfm_dict_toks <- dfm(tokens_lookup(
+     toks_no_stop, places_dict
+   ))
+   
+   # turn dfm into tibble, then do rowsums 
+   dict_tibble <- dfm_dict_toks %>% as_tibble() %>%
+     select(-doc_id)
+   
+   # assign variables- this syntax relies on quanteda.tidy
+   corpus <- corpus %>%
+     mutate(total_words = rowSums(dfm),
+            place_mentions = rowSums(dict_tibble),
+            place_mentions_prop = place_mentions / total_words)
+   
+   out <- as_tibble(cbind(corpus, docvars(corpus))) %>% 
+     mutate(text = as.character(corpus)) %>% 
+     select(-corpus) %>% 
+     select(Date, Subject, text, everything())
+   
+   return(out)
+  
+}
 
+# run the functions separately, then put back together 
+mention_out <- get_mentions(corpus = corpus, 
+                            text_field = "Message",
+                            placenames = "Washington",
+                            min_docfreq = 200, min_termfreq = 200)
 
+sent_out <- get_sentiments(corpus = corpus,
+                          text_field = "Message",
+                          min_docfreq = 200, min_termfreq = 200,
+                          dictionary = data_dictionary_LSD2015) 
 
+# join together 
+out <- left_join(mention_out, sent_out, by = c(
+  "Date","Subject","bioguide_id", "name.first","name.last",
+  "name.official_full", "type","state","district","party",
+  "sex","Race","id_num", "state.name"
+)) %>% 
+  select(-starts_with("number"))
 
-#make into a tokens object
-tokens <- tokens(corpus, remove_punct = TRUE,
-                 remove_numbers = FALSE,
-                 remove_url = TRUE, 
-                 remove_symbols = FALSE)
-
-
-#remove stopwords via tokens_select
-toks_no_stop <- tokens_select(tokens,
-                              pattern = stopwords(language="en",source="marimo"),
-                              selection = 'remove')
-
-#get word count per document
-dfm <- dfm(tokens)
-#trim the dfm so it doesn't break - these parameters may need tuning
-dfmtrimmed <- dfm_trim(dfm, min_docfreq = 50,
-                       min_termfreq = 50, verbose = TRUE)
-
-dfm <- convert(dfmtrimmed, to = "data.frame") %>%
-  as_tibble() %>%
-  dplyr::select(-doc_id)
-
-#get number of mentions of places per document in the corpus
-dfm_dict_toks <- dfm(tokens_lookup(toks_no_stop,
-                                   places_dict))
-#turn dfm into tibble, then do rowsums
-dict_tibble <- dfm_dict_toks %>%
-  as_tibble() %>% 
-  dplyr::select(-doc_id)
-
-#assign variables 
-#docvars(corpus, "total_words") <- rowSums(dfm)
-corpus <- corpus %>% 
-  mutate(total_words = rowSums(dfm), # total words variable
-         place_mentions = rowSums(dict_tibble), # number of place mentions
-         place_mentions_prop = place_mentions / total_words) # % of all words that are place mentiions
-
-
-
-# SENTIEMENT ANALYSIS - tokenize and apply dictionary
-sent_dict <- corpus %>%
-  tokens() %>%
-  tokens_lookup(dictionary = data_dictionary_LSD2015)
-# transform to a dfm and convert to dataframe
-dfmat_dict <- dfm(sent_dict) 
-dict_output <- convert(dfmat_dict, to = "data.frame")
-
-#create sentiment score (this is from benoit slides)
-dict_output$sent_score <- log((dict_output$positive +
-                                 dict_output$neg_negative + 0.5) /
-                                (dict_output$negative +
-                                   dict_output$neg_positive+ 0.5))
-dict_output <- cbind(dict_output, docvars(corpus))
-
-dict_output %>% 
+# make plot 
+out %>% 
   filter(total_words > 500, 
          party %in% c("Republican","Democrat"),
          place_mentions_prop > 0.0001) %>% 
-  group_by(name.official_full, party) %>% 
-  summarize(total_sentiment = weighted.mean(sent_score, w = total_words),
-            place_mentions = weighted.mean(place_mentions_prop, w = total_words)) %>% 
-  ungroup() %>% 
-  ggplot(aes(y = total_sentiment, x = place_mentions, color = party)) + 
+  ggplot(aes(y = sentscore, x = log(place_mentions_prop), color = party)) + 
   geom_point() + 
   geom_smooth() + 
-  theme_minimal()
+  theme_minimal() + 
+  labs(x = "Washington mentions proportion (log)",
+       y = "Sentiment",
+       title = "Washington mentions vs. sentiment, by party",
+       subtitle = "Observations at newsletter-level, 
+       only newsletters with >500 words and non-zero placename mentions")
 
 
+# perhaps try with sentences, rather than by 
 
-
+# MTURK with clouresearch approved respondents 
 
 
 
