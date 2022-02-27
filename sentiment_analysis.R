@@ -14,14 +14,14 @@ library(tidytext)
 library(stats)
 library(BSDA)
 
-#setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
-setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
+setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
+#setwd("/Users/nod086/Desktop/GeoAppeals/GeoAppeals")
 
 # set up the corpus 
 news <- read_csv("data/all_newsletters.csv")
 
 #take sample 
-news <- news %>% sample_n(size = nrow(news)/2)
+news <- news %>% sample_n(size = nrow(news)/5)
 
 news$doc_id <- seq(1, nrow(news), 1)
 quanteda_options(threads = 6)
@@ -67,9 +67,10 @@ corpus <- corpus_reshape(corp_sentences, to = "documents")
 
 
 ############################################################
-# DETECT WHETHER PLACE-NAME APPEARS IN DOCUMENT 
+# FUNCTIONS 
 ############################################################
 
+# function to analyze the sentiments of documents
 get_sentiments <- function(corpus,                        
                            text_field,
                                       placenames,
@@ -94,6 +95,7 @@ get_sentiments <- function(corpus,
   dict_output <- cbind(dict_output, docvars(corpus)) 
   return(dict_output)
 }
+
 # define function for getting place-name mentions from documens
 get_mentions <- function(corpus, text_field, placenames,
                          min_docfreq = 50, min_termfreq = 50){
@@ -142,7 +144,9 @@ get_mentions <- function(corpus, text_field, placenames,
    out <- as_tibble(cbind(corpus, docvars(corpus))) %>% 
      mutate(text = as.character(corpus)) %>% 
      select(-corpus) %>% 
-     select(Date, Subject, text, everything())
+     select(Date, Subject, text, everything()) %>% 
+     # make binary variable for whether place is mentioned at all 
+     mutate(mentions_binary = ifelse(place_mentions > 0, 1, 0))
    
    return(out)
   
@@ -165,7 +169,10 @@ out <- left_join(mention_out, sent_out, by = c(
   "name.official_full", "type","state","district","party",
   "sex","Race","id_num", "state.name"
 )) %>% 
-  select(-starts_with("number"))
+  select(-starts_with("number")) 
+
+# make binary variable for whether place is mentioned at all 
+
 
 # make plot 
 out %>% 
@@ -183,16 +190,38 @@ out %>%
        only newsletters with >500 words and non-zero placename mentions")
 
 
-# perhaps try with sentences, rather than by 
+# perhaps try with sentences, rather than by document
+
+# things to figure out: 
+# 1 . how to do the analysis at the sentence-level, not the document level
 
 # MTURK with clouresearch approved respondents 
 
 
 
 
+# save csv of top 500 newsletters by within-state mentions 
 
+newsletters_state <- readRDS("data/newsletters_with_state_mentions.Rds")
 
+top500states <- newsletters_state %>% 
+  arrange(desc(place_mentions_prop)) %>% 
+  select(text, state, district, name.official_full, party,
+         everything()) %>% 
+  head(n = 500)
 
+write.csv(top500states, "data/top500_withinstate_mentions.csv")
+
+# save csv of top 500 newsletters by washington count (from the sample)
+
+top500washington <- mention_out %>% 
+  arrange(desc(place_mentions_prop)) %>% 
+  filter(state != "Washington") %>% 
+  select(text, state, district, name.official_full, party, place_mentions_prop, 
+         everything()) %>% 
+  head(n = 500)
+
+write.csv(top500washington, "data/top500_washington_sample.csv")
 
 
 
