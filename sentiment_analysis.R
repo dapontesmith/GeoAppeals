@@ -21,7 +21,7 @@ setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
 news <- read_csv("data/all_newsletters.csv")
 
 #take sample 
-news <- news %>% sample_n(size = nrow(news)/5)
+news <- news %>% sample_n(size = nrow(news))
 
 news$doc_id <- seq(1, nrow(news), 1)
 quanteda_options(threads = 6)
@@ -58,12 +58,38 @@ corpus_orig <- corpus_orig %>%
 
 # convert to sentences, for more precise filtering
 corp_sentences <- corpus_reshape(corpus_orig, to = "sentences")
+
 # filter out sentence-addresses
 corp_sentences <- corp_sentences %>% 
   corpus_subset(str_detect(., str_c("\\b(", str_c(zips, collapse = "|"), ")\\b")) == FALSE,
-                str_detect(., "Office Building") == FALSE) 
+                str_detect(., "Office Building") == FALSE,
+                str_detect(., "WASHINGTON") == FALSE,
+                str_detect(., "Contact Information") == FALSE, 
+                str_detect(., "Washington Journal") == FALSE,
+                str_detect(., "Washington Times") == FALSE,
+                str_detect(., "Washington, D.C. Office") == FALSE, 
+                str_detect(., "Washington, DC Office") == FALSE,
+                str_detect(., "Office Locations Washington D.C.") == FALSE,
+                str_detect(., "Office Locations Washington, D.C.") == FALSE)
+
+# save sentence corpus and document variables as csv
+sentences_df <- as_tibble(cbind(
+  as_tibble(corp_sentences),
+  docvars(corp_sentences)
+)) %>% 
+  rename(text = value)
+
+write.csv(sentences_df, "data/sentences_newsletters_clean.csv")
+                
 
 corpus <- corpus_reshape(corp_sentences, to = "documents")
+corpus_df <- as_tibble(cbind(
+  as_tibble(corpus),
+  docvars(corpus)
+)) %>% 
+  rename(text = value)
+
+write.csv(corpus_df, "data/newsletters_clean.csv")
 
 
 ############################################################
