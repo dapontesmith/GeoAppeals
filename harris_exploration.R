@@ -3,30 +3,42 @@ library(haven)
 library(estimatr)
 setwd("C:/Users/nod086/Downloads/")
 
-df <- read_sav("HOP 220224 CAPS v1.sav")
+df <- read_sav("caps_questions_feb2022.sav")
 
-df <- df %>% 
-  mutate(white= ifelse(QRACE == 1, 1, 0),
-         male = ifelse(D1 == 1, 1, 0),
-         age = D2,
+# read in the full harris poll 
+harris <- read_csv("harris_feb_2022.csv") %>% 
+  rename(urban_rural = QD16)
+
+# join the full harris poll with hte CAPS questions
+full <- df %>% 
+  left_join(., 
+            harris %>% select(-urban_rural) ,
+            by = c("record" = "RECORD")) %>% 
+  # ASK LIZ - IS THIS THE RIGHT VARIABLE ON WHICH TO MERGE? 
+  # rename and clean some variables 
+  rename(age = D2, 
          region = H3, 
-         education = H5,
-         republican = ifelse(H4New %in% c(1, 3), 1, 0),
-         income = H5A,
-         income = ifelse(income == 7, NA, income),
-         party = case_when(
-           H4 == 1 ~ "GOP",
-           H4 == 2 ~ "Dem",
-           H4 == 3 ~ "Ind",
-           H4 == 4 ~ "Other"),
-         party2 = case_when(
-           H4New %in% c(1, 3) ~ "GOP",
-           H4New %in% c(2, 4) ~ "Dem"
-         ))
+         education = H4, 
+         income = H5A) %>% 
+  mutate(white = ifelse(QRACE.x == 1, 1, 0), 
+         male = ifelse(D1 == 1, 1, 0),
+         republican = ifelse(H4New %in% c(1, 3), 1, 0))
+
+urban_rural <- harris %>% 
+  select(RECORD, urban_rural) %>% 
+  mutate(urban_rural_cat = case_when(
+    urban_rural == 1 ~ "urban",
+    urban_rural == 2 ~ "suburban",
+    urban_rural == 3 ~ "rural"
+  ))
+
+full <- left_join(full, urban_rural, 
+          by = c("record" = "RECORD")) 
+
 
 # make summary table of Q1
 
-first <- qs %>% 
+first <- full %>% 
   select(starts_with("Q1")) 
 
 names(first) <- c("state","local", "middle_class",
@@ -49,8 +61,9 @@ cbind(names(first), holder) %>%
   geom_bar(stat = "identity")
 
 # make plot of people's thermometer ratings, by area and party
-ratings <- df %>% 
-  select(record, party, party2, starts_with("Q2New")) %>% 
+ratings <- full %>% 
+  select(record, republican, urban_rural_cat,
+         white, male, age, republican, education, income, starts_with("Q2New")) %>% 
   rename(local = Q2Newr1, 
          major_city = Q2Newr2, 
          rural = Q2Newr3, 
@@ -62,15 +75,21 @@ ratings <- df %>%
                names_to = "area",
                values_to = "rating")
 ratings %>% 
-  filter(party %in% c("GOP","Dem")) %>% 
+  filter(area %in% c("major_city","rural"),
+         !is.na(urban_rural_cat)) %>% 
+  rename(`Area being rated` = area) %>% 
   ggplot() + 
-  geom_density(aes(x = rating, color = party2)) +
-  facet_wrap(~ area) +
-  theme_minimal()
+  geom_density(aes(x = rating, color = `Area being rated`)) +
+  facet_wrap(~ urban_rural_cat) +
+  labs(title = "Thermometer ratings of areas, by place-type of residence")
 
+rate_subset <- ratings %>%
+  filter(area == "state")
 
-
-
+summary(lm(data = rate_subset, 
+           rating ~  white + male + age + 
+             republican + education + income + 
+             as.factor(urban_rural_cat)))
 
 # who belongs to the local community? 
 summary(lm(data = df, 
