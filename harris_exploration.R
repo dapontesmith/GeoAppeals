@@ -1,12 +1,12 @@
 library(tidyverse)
 library(haven)
 library(estimatr)
-setwd("C:/Users/nod086/Downloads/")
-
-df <- read_sav("caps_questions_feb2022.sav")
+#setwd("C:/Users/nod086/Downloads/")
+setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
+df <- read_sav("data/harris/caps_questions_feb2022.sav")
 
 # read in the full harris poll 
-harris <- read_csv("harris_feb_2022.csv") %>% 
+harris <- read_csv("data/harris/harris_feb_2022.csv") %>% 
   rename(urban_rural = QD16)
 
 # join the full harris poll with hte CAPS questions
@@ -94,3 +94,42 @@ summary(lm(data = rate_subset,
 # who belongs to the local community? 
 summary(lm(data = df, 
           Q1Newr2 ~ white + male + age + republican + education + income))
+
+
+# question 3 - on negative vs. positive identification
+third <- full %>% 
+  select(record, urban_rural_cat, white, male, age, republican, education, income,
+         starts_with("Q3Newr")) 
+
+names(third) <- c("record","urban_rural_cat",
+                  "white","male","age","republican","education","income",
+                  "local","major_city","rural",
+                  "state","region","other_regions",
+                  "united_states")
+
+third <- third %>% 
+  pivot_longer(cols = local:united_states, names_to = "area", 
+               values_to = "value") %>% 
+  mutate(value = case_when(
+    value == 1 ~ -3, 
+    value == 2 ~ -2, 
+    value == 3 ~ -1, 
+    value == 4 ~ 0, 
+    value == 5 ~ 1, 
+    value == 6 ~ 2, 
+    value == 7 ~ 3
+  )) 
+
+third %>% 
+  filter(area %in% c("major_city","rural"),
+         !is.na(urban_rural_cat)) %>% 
+  ggplot(aes(x = value, color = urban_rural_cat)) + 
+  geom_density() + 
+  facet_wrap(~ area)
+
+
+summary(lm(data = third %>% filter(area == "major_city"), 
+           value ~ white + male + age + republican + 
+             education + income))
+
+        
