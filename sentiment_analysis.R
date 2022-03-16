@@ -92,6 +92,8 @@ corpus_df <- as_tibble(cbind(
 write.csv(corpus_df, "data/newsletters_clean.csv")
 
 
+
+
 ############################################################
 # FUNCTIONS 
 ############################################################
