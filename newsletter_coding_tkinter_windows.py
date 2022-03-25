@@ -22,7 +22,7 @@ root.grid_columnconfigure(1, weight=1)
 # Choose file with newsletter data
 input_csv = filedialog.askopenfilename()
 # read in data here
-df = pd.read_csv(str(Path(input_csv)), encoding='latin1')
+df = pd.read_csv(str(Path(input_csv)), encoding = "latin1")
 # df = pd.read_csv("/Users/jacob/Dropbox/GeoAppeals/data/newsletters_with_state_mentions.csv")
 # df = pd.read_csv("C:/Users/dapon/Dropbox/Harvard/GeoAppeals/data/newsletters_with_state_mentions.csv")
 # df = pd.read_csv("/Users/elizabeththom/Dropbox/GeoAppeals/data/newsletters_with_state_mentions.csv")
@@ -219,8 +219,26 @@ def clicked_save():
     DC_annotation = DC_annotation_entry.get()
     df.loc[global_row_idx, 'DC_annotation'] = DC_annotation
 
-    save_path = filedialog.asksaveasfile(mode='w', defaultextension=".csv")
-    df.to_csv(save_path)
+    print(df.head())
+    print(list(df['state_annotation'])[:10])
+    print(list(df['DC_annotation'])[:10])
+
+    #save_path = filedialog.asksaveasfile(mode='w', defaultextension=".csv")
+    
+    save_path = filedialog.asksaveasfilename(defaultextension=".csv")
+
+    print("save path: " + str(save_path))
+
+    rows = []
+    rows.append(list(df.columns))
+    for idx, row in df.iterrows():
+        rows.append(row)
+
+    with open(str(save_path), 'w', errors='ignore') as csv_out:
+        csvwriter = csv.writer(csv_out)
+        csvwriter.writerows(rows)
+
+    #df.to_csv(save_path, encoding="cp1252")
 
 def clicked_go_to_page():
     page_num_str = page_entry.get()

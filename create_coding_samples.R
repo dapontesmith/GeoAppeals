@@ -100,3 +100,5 @@ create_sample_function <- function(size, filename){
 create_sample_function(size = 500, filename = "data/newletter_samples/coding_sample1.csv")
 create_sample_function(size = 500, filename = "data/newletter_samples/coding_sample2.csv")
 create_sample_function(size = 500, filename = "data/newletter_samples/coding_sample3.csv")
+
+create_sample_function(size = 500, filename = "data/newsletter_samples/coding_sample_joint.csv")
