@@ -21,7 +21,7 @@ setwd("C:/Users/dapon/Dropbox/Harvard/GeoAppeals")
 news <- read_csv("data/all_newsletters.csv")
 
 #take sample 
-news <- news %>% sample_n(size = nrow(news))
+news <- news %>% sample_n(size = nrow(news)/3)
 
 news$doc_id <- seq(1, nrow(news), 1)
 quanteda_options(threads = 6)
@@ -79,7 +79,7 @@ sentences_df <- as_tibble(cbind(
 )) %>% 
   rename(text = value)
 
-write.csv(sentences_df, "data/sentences_newsletters_clean.csv")
+# write.csv(sentences_df, "data/sentences_newsletters_clean.csv")
                 
 
 corpus <- corpus_reshape(corp_sentences, to = "documents")
@@ -89,7 +89,7 @@ corpus_df <- as_tibble(cbind(
 )) %>% 
   rename(text = value)
 
-write.csv(corpus_df, "data/newsletters_clean.csv")
+# write.csv(corpus_df, "data/newsletters_clean.csv")
 
 
 
@@ -185,6 +185,38 @@ mention_out <- get_mentions(corpus = corpus,
                             text_field = "Message",
                             placenames = "Washington",
                             min_docfreq = 200, min_termfreq = 200)
+
+
+# count mentions of red states
+redstate_out <- get_mentions(corpus = corpus, 
+                                       text_field = "Message",
+                                       placenames = c("red state","Red state","Red State",
+                                                      "red states","Red states","Red States"),
+                                       min_docfreq = 200, min_termfreq = 200)
+
+
+# count mentions of blue states
+bluestate_out <- get_mentions(corpus = corpus, 
+                             text_field = "Message",
+                             placenames = c("blue state","Blue state",'Blue State',
+                                            "blue states","Blue states",'Blue States'),
+                             min_docfreq = 200, min_termfreq = 200)
+
+# join these together 
+bluestate_out <- bluestate_out %>% 
+  rename(bluestate_mentions = place_mentions,
+         bluestate_mentions_prop = place_mentions_prop)
+
+redstate_out <- redstate_out %>% 
+  rename(redstate_mentions = place_mentions,
+         redstate_mentions_prop = place_mentions_prop)
+
+test <- left_join(redstate_out, 
+          bluestate_out, 
+          by = c("Date","Subject","text","bioguide_id")) %>% 
+  mutate(redstate_bluestate = redstate_mentions + bluestate_mentions,
+         redstate_bluestate_prop = redstate_mentions_prop + bluestate_mentions_prop)
+
 
 sent_out <- get_sentiments(corpus = corpus,
                           text_field = "Message",
