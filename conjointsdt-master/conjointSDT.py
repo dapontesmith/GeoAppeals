@@ -348,10 +348,10 @@ class conjointGUI:
 
         if response != None:
             in_file_name = filedialog.askopenfilename(**self.csv_opt)
+            print(in_file_name)
             if re.search("\.csv",in_file_name[-4:]) != None:
                 try:
-                    open_file = open(in_file_name,"rb")
-                    csv_open = csv.reader(open_file)
+
                     self.attribute_list = []
                     self.level_dict = {}
                     self.probabilities = {}
@@ -370,17 +370,19 @@ class conjointGUI:
                     self.task_num.set("5")
                     self.profile_num = StringVar()
                     self.profile_num.set("2")
-                    
-                    for line in csv_open:
-                        attr = line.pop(0)
-                        self.attribute_list.append(attr)
-                        self.level_dict[attr] = []
-                        for entr in line:
-                            if entr != "":
-                                self.level_dict[attr].append(entr)
-                                
+
+                    with open(in_file_name,"r", errors='ignore') as csv_in:
+                        csv_open = csv.reader(csv_in, delimiter=",", quotechar='"')
+                        
+                        for line in csv_open:
+                            attr = line.pop(0)
+                            self.attribute_list.append(attr)
+                            self.level_dict[attr] = []
+                            for entr in line:
+                                if entr != "":
+                                    self.level_dict[attr].append(entr)
+
                          
-                    open_file.close()
                     self.clear_probabilities()
                     self.file_name = "Untitled"
                     self.update_file_name("Untitled")
