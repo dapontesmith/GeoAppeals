@@ -14,7 +14,7 @@ if __name__ == "__main__":
 			"policy":0,
 			"symbolic":1,
 			"symbolc":1,
-			"engagement":2,
+			"engagement":99,
 			"na":99,
 			"nan":99
 		},
@@ -23,18 +23,18 @@ if __name__ == "__main__":
 			"policu":0,
 			'symoblic':1,
 			'symbolic':1,
-			'engagment':2,
-			'egnagement':2,
-			'engagement':2,
+			'engagment':99,
+			'egnagement':99,
+			'engagement':99,
 			"na":99
 		},
 		"jw":{
 			"policy":0,
 			"symbolic":1,
-			"constituent":2,
-			"contituent":2,
-			"consituent":2,
-			"contact":2,
+			"constituent":99,
+			"contituent":99,
+			"consituent":99,
+			"contact":99,
 			"self-congratulatory":2,
 			"representational":2,
 			"representation":2,
@@ -45,6 +45,42 @@ if __name__ == "__main__":
 			"na":99,
 		}
 	}
+	# coders_state_translation_dict = {
+	# 	"nds":{
+	# 		"policy":0,
+	# 		"symbolic":1,
+	# 		"symbolc":1,
+	# 		"engagement":0,
+	# 		"na":99,
+	# 		"nan":99
+	# 	},
+	# 	"lt":{
+	# 		"policy":0,
+	# 		"policu":0,
+	# 		'symoblic':1,
+	# 		'symbolic':1,
+	# 		'engagment':2,
+	# 		'egnagement':2,
+	# 		'engagement':2,
+	# 		"na":99
+	# 	},
+	# 	"jw":{
+	# 		"policy":0,
+	# 		"symbolic":1,
+	# 		"constituent":2,
+	# 		"contituent":2,
+	# 		"consituent":2,
+	# 		"contact":2,
+	# 		"self-congratulatory":2,
+	# 		"representational":2,
+	# 		"representation":2,
+	# 		"representative":2,
+	# 		"empathetic":2,
+	# 		"outgroup":3,
+	# 		"partisan":4,
+	# 		"na":99,
+	# 	}
+	# }
 	# "policy/symbolic":0,
 	# "policy/constituent":0,
 	# "policy/representative":0,
