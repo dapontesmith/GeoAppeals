@@ -102,3 +102,6 @@ create_sample_function(size = 500, filename = "data/newletter_samples/coding_sam
 create_sample_function(size = 500, filename = "data/newletter_samples/coding_sample3.csv")
 
 create_sample_function(size = 500, filename = "data/newsletter_samples/coding_sample_joint.csv")
+
+create_sample_function(size = 200, 
+                       filename = "data/newsletter_samples/coding_sample_may2022.csv")

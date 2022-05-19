@@ -9,14 +9,53 @@ BASE_DIR = "/Users/jacob/Dropbox/GeoAppeals/data/newsletter_samples/"
 if __name__ == "__main__":
 
 	coders = ["jw", "lt", "nds"]
+	# coders_state_translation_dict = {
+	# 	"nds":{
+	# 		"policy":0,
+	# 		"symbolic":1,
+	# 		"symbolc":1,
+	# 		"engagement":99,
+	# 		"na":99,
+	# 		"nan":99
+	# 	},
+	# 	"lt":{
+	# 		"policy":0,
+	# 		"policu":0,
+	# 		'symoblic':1,
+	# 		'symbolic':1,
+	# 		'engagment':99,
+	# 		'egnagement':99,
+	# 		'engagement':99,
+	# 		"na":99
+	# 	},
+	# 	"jw":{
+	# 		"policy":0,
+	# 		"symbolic":1,
+	# 		"constituent":99,
+	# 		"contituent":99,
+	# 		"consituent":99,
+	# 		"contact":99,
+	# 		"self-congratulatory":2,
+	# 		"representational":2,
+	# 		"representation":2,
+	# 		"representative":2,
+	# 		"empathetic":2,
+	# 		"outgroup":3,
+	# 		"partisan":4,
+	# 		"na":99,
+	# 	}
+	# }
 	coders_state_translation_dict = {
 		"nds":{
 			"policy":0,
 			"symbolic":1,
 			"symbolc":1,
+			"smbolic":1,
+			"out-geography":4,
 			"engagement":99,
 			"na":99,
-			"nan":99
+			"nan":99,
+			"":99,
 		},
 		"lt":{
 			"policy":0,
@@ -39,9 +78,9 @@ if __name__ == "__main__":
 			"representational":2,
 			"representation":2,
 			"representative":2,
-			"empathetic":2,
-			"outgroup":3,
-			"partisan":4,
+			"empathetic":3,
+			"outgroup":4,
+			"partisan":5,
 			"na":99,
 		}
 	}
@@ -108,10 +147,15 @@ if __name__ == "__main__":
 		}
 	}
 
+	# coder_csvs_dict = {
+	# 	"jw":[BASE_DIR + "coding_sample_joint_jw_v7.csv"],
+	# 	"nds":[BASE_DIR + "coding_sample_joint_noah_full.csv"],
+	# 	"lt":[BASE_DIR + "updated_coding_sample_joint_ET.csv"],
+	# }
 	coder_csvs_dict = {
-		"jw":[BASE_DIR + "coding_sample_joint_jw_v7.csv"],
-		"nds":[BASE_DIR + "coding_sample_joint_noah_full.csv"],
-		"lt":[BASE_DIR + "updated_coding_sample_joint_ET.csv"],
+		"jw":[BASE_DIR + "coding_sample_may2022_jw.csv"],
+		"nds":[BASE_DIR + "coding_sample_may2022_noahfinal.csv"],
+		"lt":[BASE_DIR + "ethom_new100_vfinal.csv"],
 	}
 	coder_all_state_annotations_dict = {
 		"nds":[],
@@ -210,9 +254,6 @@ if __name__ == "__main__":
 
 
 
-
-
-
 	coder_idx_dict = {
 		"nds":0,
 		"lt":1,
@@ -266,13 +307,14 @@ if __name__ == "__main__":
 		if differing_lengths and record_coded_by_all:
 			print("===================")
 			print("Differing record: " + str(i))
-			print(coders_annotations[0][0] + " : " + str(coders_annotations[0][1]))
-			print(coders_annotations[1][0] + " : " + str(coders_annotations[1][1]))
-			print(coders_annotations[2][0] + " : " + str(coders_annotations[2][1]))
+			print(coders_annotations[0][0] + " : " + str(coders_annotations[0][1]) + " - Len: " + str(len(coders_annotations[0][1])))
+			print(coders_annotations[1][0] + " : " + str(coders_annotations[1][1]) + " - Len: " + str(len(coders_annotations[1][1])))
+			print(coders_annotations[2][0] + " : " + str(coders_annotations[2][1]) + " - Len: " + str(len(coders_annotations[2][1])))
 			print(coders_coded_newsletter[0])
 			print(coders_coded_newsletter[1])
 			print(coders_coded_newsletter[2])
 			print("-------------------")
+
 
 		if record_coded_by_all:
 			state_annotation_taskdata_for_nltk = state_annotation_taskdata_for_nltk + task_completed_by_all_coders
