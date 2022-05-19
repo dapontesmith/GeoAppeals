@@ -6,6 +6,7 @@ import numpy as np
 from pathlib import Path
 import csv
 import random
+from datetime import datetime
 
 random.seed(10)
 
@@ -22,47 +23,77 @@ def splitWithIndices(s, c=' '):
 def most_common(lst):
     return max(set(lst), key=lst.count)
 
+def standardize_date(date_str):
+    new_date = None
+    if not isinstance(date_str, str):
+        new_date = date_str
+    else:
+        space_idx = date_str.find(" ")
+        if space_idx == -1:
+            new_date = date_str
+        else:
+            if date_str[space_idx-3] == "/":
+                if int(date_str[space_idx-2:space_idx]) < 23:
+                    new_date = date_str[:space_idx-2] + "20" + date_str[space_idx-2:]
+                else:
+                    new_date = date_str[:space_idx-2] + "19" + date_str[space_idx-2:]
+            else:
+                new_date = date_str
+
+    return new_date
+
+
 if __name__ == "__main__":
 
     # Read in newsletter data
     input_csv = "/Users/jacob/Dropbox/GeoAppeals/data/newsletters_clean.csv"
-    df = pd.read_csv(input_csv, encoding='iso-8859-1')
-    df['unique_id'] = df["Date"].astype(str) + "::" + df["name.first"] + "::" + df["name.last"] + "::" + df["state"]
+    df = pd.read_csv(input_csv, encoding='iso-8859-1', dtype={"Date":str, "bioguide_id":str, "name.first":str, "name.last":str, "state":str})
+    df['Date'] = df['Date'].apply(standardize_date)
+    del df['Unnamed: 0']
+    df['unique_id'] = df["Date"].map(str) + "::" + df["name.first"].map(str) + "::" + df["name.last"].map(str) + "::" + df["state"].map(str)
+    df = (
+        df.assign(count=(df["text"].str.len()))
+        .sort_values("count")
+        .drop_duplicates(subset=['unique_id'], keep="last")
+    ).drop('count',axis=1)
 
-    # Read in JW annotations
+    # Read and merge in JW annotations
     jw_annotations_file = "/Users/jacob/Dropbox/GeoAppeals/data/newsletter_samples/coding_sample_may2022_jw.csv"
-    jw_df = pd.read_csv(jw_annotations_file, usecols=["Date", "bioguide_id", "name.first", "name.last", "state", "state_annotation"], encoding="iso-8859-1")
-    jw_df['unique_id'] = jw_df["Date"].astype(str) + "::" + jw_df["name.first"].map(str) + "::" + jw_df["name.last"].map(str) + "::" + jw_df["state"].map(str)
-    print(jw_df['unique_id'].value_counts())
-    print("=========")
+    jw_df = pd.read_csv(jw_annotations_file, usecols=["Date", "bioguide_id", "name.first", "name.last", "state", "state_annotation"], dtype={"Date":str, "bioguide_id":str, "name.first":str, "name.last":str, "state":str}, encoding="iso-8859-1")
+    jw_df['Date'] = jw_df['Date'].apply(standardize_date)
+    jw_df = jw_df[jw_df['state_annotation'].notnull()]
+    jw_df['unique_id'] = jw_df["Date"].map(str) + "::" + jw_df["name.first"].map(str) + "::" + jw_df["name.last"].map(str) + "::" + jw_df["state"].map(str)
     jw_df = jw_df[["unique_id", "state_annotation"]]
     df = df.merge(jw_df, how="outer", on="unique_id")
     df = df.rename(columns={"state_annotation":"jw_state_annotation"})
-
-    # Remove records where the state column or text column is NaN
-    df['jw_state_annotation'] = df['jw_state_annotation'].astype(str)
-    df.loc[df['jw_state_annotation'] == "[]", 'jw_state_annotation'] = np.nan
-    print(df['jw_state_annotation'].value_counts())
-    print(df[~df['jw_state_annotation'].notnull()].shape)
-    df = df[(~df['state.name'].notnull()) & (~df['text'].notnull())]
-    print(df[~df['jw_state_annotation'].notnull()].shape)
-    exit()
+    df = df[(df['state.name'].notnull()) & (df['text'].notnull())]
+    print(df[df['jw_state_annotation'].notnull()].shape)
+    # df[(df['jw_state_annotation'].notnull())].to_csv("/Users/jacob/Downloads/post_all_joins1.csv")
 
     # Read in LT annotations
     lt_annotations_file = "/Users/jacob/Dropbox/GeoAppeals/data/newsletter_samples/ethom_new100_vfinal.csv"
-    lt_df = pd.read_csv(lt_annotations_file, usecols=["Date", "bioguide_id", "name.first", "name.last", "state", "state_annotation"], encoding='iso-8859-1')
-    lt_df['unique_id'] = lt_df["Date"].astype(str) + "::" + lt_df["name.first"].map(str) + "::" + lt_df["name.last"].map(str) + "::" + lt_df["state"].map(str)
+    lt_df = pd.read_csv(lt_annotations_file, usecols=["Date", "bioguide_id", "name.first", "name.last", "state", "state_annotation"], dtype={"Date":str, "bioguide_id":str, "name.first":str, "name.last":str, "state":str}, encoding='iso-8859-1')
+    lt_df['Date'] = lt_df['Date'].apply(standardize_date)
+    lt_df = lt_df[lt_df['state_annotation'].notnull()]
+    lt_df['unique_id'] = lt_df["Date"].map(str) + "::" + lt_df["name.first"].map(str) + "::" + lt_df["name.last"].map(str) + "::" + lt_df["state"].map(str)
     lt_df = lt_df[["unique_id", "state_annotation"]]
     df = df.merge(lt_df, how="outer", on="unique_id")
     df = df.rename(columns={"state_annotation":"lt_state_annotation"})
+    print(df[df['lt_state_annotation'].notnull()].shape)
+    # df[(df['jw_state_annotation'].notnull()) | (df['lt_state_annotation'].notnull())].to_csv("/Users/jacob/Downloads/post_all_joins2.csv")
 
     # Read in NDS annotations
     nds_annotations_file = "/Users/jacob/Dropbox/GeoAppeals/data/newsletter_samples/coding_sample_may2022_noahfinal.csv"
-    nds_df = pd.read_csv(nds_annotations_file, usecols=["Date", "bioguide_id", "name.first", "name.last", "state", "state_annotation"], encoding='iso-8859-1')
+    nds_df = pd.read_csv(nds_annotations_file, usecols=["Date", "bioguide_id", "name.first", "name.last", "state", "state_annotation"], dtype={"Date":str, "bioguide_id":str, "name.first":str, "name.last":str, "state":str}, encoding='iso-8859-1')
+    nds_df['Date'] = nds_df['Date'].apply(standardize_date)
+    nds_df = nds_df[nds_df['state_annotation'].notnull()]
     nds_df['unique_id'] = nds_df["Date"].map(str) + "::" + nds_df["name.first"].map(str) + "::" + nds_df["name.last"].map(str) + "::" + nds_df["state"].map(str)
     nds_df = nds_df[["unique_id", "state_annotation"]]
     df = df.merge(nds_df, how="outer", on="unique_id")
     df = df.rename(columns={"state_annotation":"nds_state_annotation"})
+    print(df[df['nds_state_annotation'].notnull()].shape)
+    # df[(df['jw_state_annotation'].notnull()) | (df['lt_state_annotation'].notnull()) | (df['nds_state_annotation'].notnull())].to_csv("/Users/jacob/Downloads/post_all_joins3.csv")
+
 
     sentence_level_rows = []
     for row_idx, row in df.iterrows():
@@ -114,22 +145,30 @@ if __name__ == "__main__":
                 annotation_idx += 1
 
     sentence_level_df = pd.DataFrame(sentence_level_rows, columns=list(df.columns) + ["sentence_w_mention", "jw_annotation", "lt_annotation", "nds_annotation", "majority_annotation"])
-    
+    print("1: " + str(sentence_level_df.shape))
+
     sentence_level_df['is_annotated'] = 0
-    sentence_level_df.loc[~sentence_level_df['majority_annotation'].isnull(), "is_annotated"] = 1
-    print(sentence_level_df.shape)
+    sentence_level_df.loc[sentence_level_df['majority_annotation'].notnull(), "is_annotated"] = 1
+    print("2: " + str(sentence_level_df.shape))
     
-    sentence_level_df['is_training'] = 0
-    sentence_level_df['is_validation'] = 0
     sentence_level_df['temp_unique_id'] = sentence_level_df.index
 
     annotated_sentences_df = sentence_level_df[sentence_level_df['is_annotated'] == 1]
-    print(annotated_sentences_df.shape)
-    train_annotated_sentences_df = annotated_sentences_df.sample(n=int(sentence_level_df.shape[0]*0.7))
+    print("3: " + str(annotated_sentences_df.shape))
+    train_annotated_sentences_df = annotated_sentences_df.sample(n=int(annotated_sentences_df.shape[0]*0.7))
+    print("4: " + str(train_annotated_sentences_df.shape))
     train_annotated_sentences_df['is_training'] = 1
+    train_annotated_sentences_df = train_annotated_sentences_df[['temp_unique_id', 'is_training']]
     sentence_level_df = sentence_level_df.merge(train_annotated_sentences_df, how='left', on='temp_unique_id')
+    print("5: " + str(sentence_level_df.shape))
+    sentence_level_df.loc[sentence_level_df['is_training'] != 1, 'is_training'] = 0
+    sentence_level_df['is_validation'] = 0
     sentence_level_df.loc[(sentence_level_df['is_annotated'] == 1) & (sentence_level_df['is_training'] == 0), 'is_validation'] = 1
     del sentence_level_df['temp_unique_id']
 
-    sentence_level_df.to_csv("/Users/jacob/Dropbox/GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv")
+    sentence_level_df['text'] = sentence_level_df['text'].astype(str)
+    sentence_level_df['Date'] = sentence_level_df['Date'].astype(str)
+    sentence_level_df['Subject'] = sentence_level_df['Subject'].astype(str)
+
+    sentence_level_df.to_csv("/Users/jacob/Dropbox/GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv", quotechar='"', index=False)
 
