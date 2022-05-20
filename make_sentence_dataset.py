@@ -42,6 +42,67 @@ def standardize_date(date_str):
 
     return new_date
 
+coders_state_translation_dict = {
+    "nds":{
+        "policy":0,
+        "symbolic":1,
+        "symbolc":1,
+        "smbolic":1,
+        "out-geography":4,
+        "engagement":99,
+        "na":99,
+        "NA":99,
+        "nan":99,
+        "":99,
+    },
+    "lt":{
+        "policy":0,
+        "policu":0,
+        'symoblic':1,
+        'symbolic':1,
+        'engagment':99,
+        'egnagement':99,
+        'engagement':99,
+        "na":99,
+        "NA":99
+    },
+    "jw":{
+        "policy":0,
+        "symbolic":1,
+        "constituent":99,
+        "contituent":99,
+        "consituent":99,
+        "contact":99,
+        "self-congratulatory":2,
+        "representational":2,
+        "representation":2,
+        "representative":2,
+        "empathetic":3,
+        "outgroup":4,
+        "partisan":5,
+        "na":99,
+        "NA":99
+    }
+}
+def standardize_annotation(annotation, person):
+    annotation = annotation.strip()
+    if "/" in annotation:
+        annotation = annotation[:annotation.find("/")]
+    
+    if annotation in coders_state_translation_dict[person]:
+        return coders_state_translation_dict[person][annotation]
+    else:
+        print(annotation)
+        return np.nan
+
+def annotation_str_to_list(annotation_str):
+    annotation_list = []
+    try:
+        annotation_list = annotation_str.split(",")
+        annotation_list = [elem.strip() for elem in annotation_list]
+        return annotation_list
+    except:
+        return annotation_list
 
 if __name__ == "__main__":
 
@@ -103,9 +164,9 @@ if __name__ == "__main__":
         record_text_lower = record_text.lower()
 
         # Get JW's, NDS', and LT's codings, if they exist for the record
-        jw_annotations = row['jw_state_annotation']
-        lt_annotations = row['lt_state_annotation']
-        nds_annotations = row['nds_state_annotation']
+        jw_annotations = annotation_str_to_list(row['jw_state_annotation'])
+        lt_annotations = annotation_str_to_list(row['lt_state_annotation'])
+        nds_annotations = annotation_str_to_list(row['nds_state_annotation'])
 
         # Iterate over everything I classify as a sentence and identify those w state mentions
         sentence_start_end_indices = list(splitWithIndices(record_text_lower, '.'))
@@ -123,28 +184,48 @@ if __name__ == "__main__":
             # Check if sentence has a state mention
             if record_state_lower in sentence:
 
-                if pd.isnull(jw_annotations) or pd.isnull(lt_annotations) or pd.isnull(nds_annotations):
+                if len(jw_annotations) == 0 or len(lt_annotations) == 0 or len(nds_annotations) == 0:
                     jw_annotation = np.nan
                     lt_annotation = np.nan
                     nds_annotation = np.nan
+                    jw_annotation_standardized = np.nan
+                    lt_annotation_standardized = np.nan
+                    nds_annotation_standardized = np.nan
                     most_common_annotation = np.nan
 
                 else:
                     jw_annotation = jw_annotations[annotation_idx]
                     lt_annotation = lt_annotations[annotation_idx]
                     nds_annotation = nds_annotations[annotation_idx]
+                    
+                    if jw_annotations[annotation_idx] == "r" or jw_annotations[annotation_idx] == "r" or jw_annotations[annotation_idx] == "r":
+                        print(row)
+                        print(list(row))
+                        print(jw_annotations)
+                        print(lt_annotations)
+                        print(nds_annotations)
+                        print(annotation_idx)
 
-                    mention_annotations = [jw_annotation, lt_annotation, nds_annotation]
-                    most_common_annotation = most_common(mention_annotations)
+                    jw_annotation_standardized = standardize_annotation(jw_annotations[annotation_idx], "jw")
+                    lt_annotation_standardized = standardize_annotation(lt_annotations[annotation_idx], "lt")
+                    nds_annotation_standardized = standardize_annotation(nds_annotations[annotation_idx], "nds")
+
+                    mention_annotations = [jw_annotation_standardized, lt_annotation_standardized, nds_annotation_standardized]
+                    mention_annotations = [elem for elem in mention_annotations if not np.isnan(elem) and elem is not None]
+                    if len(mention_annotations) > 0:
+                        most_common_annotation = most_common(mention_annotations)
+                    else:
+                        most_common_annotation = np.nan
+
                     if len(set(mention_annotations)) == 3:
                         most_common_annotation = random.choice(mention_annotations)
 
-                new_row = row.values.flatten().tolist() + [sentence, jw_annotation, lt_annotation, nds_annotation, most_common_annotation]
+                new_row = row.values.flatten().tolist() + [sentence, jw_annotation, lt_annotation, nds_annotation, jw_annotation_standardized, lt_annotation_standardized, nds_annotation_standardized, most_common_annotation]
                 sentence_level_rows.append(new_row)
 
                 annotation_idx += 1
 
-    sentence_level_df = pd.DataFrame(sentence_level_rows, columns=list(df.columns) + ["sentence_w_mention", "jw_annotation", "lt_annotation", "nds_annotation", "majority_annotation"])
+    sentence_level_df = pd.DataFrame(sentence_level_rows, columns=list(df.columns) + ["sentence_w_mention", "jw_annotation", "lt_annotation", "nds_annotation", "jw_annotation_standardized", "lt_annotation_standardized", "nds_annotation_standardized", "majority_annotation"])
     print("1: " + str(sentence_level_df.shape))
 
     sentence_level_df['is_annotated'] = 0
@@ -171,4 +252,12 @@ if __name__ == "__main__":
     sentence_level_df['Subject'] = sentence_level_df['Subject'].astype(str)
 
     sentence_level_df.to_csv("/Users/jacob/Dropbox/GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv", quotechar='"', index=False)
-
+    print(sentence_level_df[sentence_level_df['is_annotated'] == 1].shape)
+    print(sentence_level_df[sentence_level_df['is_training'] == 1].shape)
+    print(sentence_level_df[sentence_level_df['is_validation'] == 1].shape)
+    print(sentence_level_df[sentence_level_df['jw_annotation'].notnull()].shape)
+    print(sentence_level_df[sentence_level_df['lt_annotation'].notnull()].shape)
+    print(sentence_level_df[sentence_level_df['nds_annotation'].notnull()].shape)
+    print(sentence_level_df[sentence_level_df['jw_annotation_standardized'].notnull()].shape)
+    print(sentence_level_df[sentence_level_df['lt_annotation_standardized'].notnull()].shape)
+    print(sentence_level_df[sentence_level_df['nds_annotation_standardized'].notnull()].shape)
