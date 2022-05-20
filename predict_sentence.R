@@ -1,6 +1,7 @@
 setwd("C:/Users/dapon/Dropbox/Harvard")
 
 library(tidyverse)
+library(caret) # for confusion matrix
 library(quanteda)
 library(quanteda.textstats)
 library(quanteda.textmodels)
@@ -92,5 +93,31 @@ train_out <- run_nb(data = train, training_dfm = train_dfm, dfm = train_dfm)
 train <- train_out[[1]] ; acc_train <- train_out[[2]] 
 
 acc_train > acc_val
+
+
+plot_confusion <- function(data, class = "class", pred = "pred",
+                           dataset_name){
+  # takes as input the first element of output of run_nb function 
+  tab_class <- table(data[[class]], data[[pred]])
+  confusion <- confusionMatrix(tab_class, mode = "everything")
+  # Save confusion matrix as data frame 
+  confusion_data <- as.data.frame(confusion[["table"]]) %>%
+    rename(actual = Var1, predicted = Var2) 
+  title <- paste("Confusion matrix in", dataset_name, "data", sep = " ")
+  # plot matrix
+  ggplot(confusion_data, aes(x = predicted, y = actual, fill = Freq)) + 
+    geom_tile() + 
+    xlab("Predicted class") + 
+    ylab("Actual class") +
+    theme_minimal() + 
+    scale_fill_distiller(palette = "Blues", direction = 1) + 
+    ggtitle(title)
+  
+}
+
+plot_confusion(data = train, dataset_name = "train")
+plot_confusion(data = val, dataset_name = "val")
+
+
 
 
