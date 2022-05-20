@@ -7,19 +7,16 @@ library(quanteda.textstats)
 library(quanteda.textmodels)
 
 # read in full dataframe 
-df <- read_csv("GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv")
+df <- read.csv("GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv")
 
 annotated <- df %>% 
+  as_tibble() %>% 
   filter(is_annotated == 1) %>% 
-  dplyr::select(sentence_w_mention, majority_annotation, 
-                is_annotated, ends_with("annotation"),
+  select(sentence_w_mention, majority_annotation, 
+                ends_with("annotation"),
                 is_training, is_validation) %>% 
   # fill majority annotation with placeholder for now 
-  mutate(docid = 1:n(),
-         majority_annotation = case_when(
-           docid %% 2 == 0 ~ "fizz",
-           docid %% 2 == 1 ~ "buzz"
-         ))
+  mutate(docid = 1:n())
 
 train <- annotated %>% 
   filter(is_training == 1) %>% 
@@ -56,12 +53,12 @@ create_dfm <- function(data, text_var, docnames_var,
 
 train_dfm <- create_dfm(data = train, 
            text_var = "sentence", 
-           docnames = "doc_id", 
+           docnames = "docid", 
            class_var = "class")
 
 val_dfm <- create_dfm(data = val, 
                         text_var = "sentence", 
-                        docnames = "doc_id", 
+                        docnames = "docid", 
                         class_var = "class")
 
 
@@ -95,17 +92,18 @@ train <- train_out[[1]] ; acc_train <- train_out[[2]]
 acc_train > acc_val
 
 
-plot_confusion <- function(data, class = "class", pred = "pred",
+plot_confusion <- function(data, class = "class", 
+                           pred = "pred",
                            dataset_name){
   # takes as input the first element of output of run_nb function 
-  tab_class <- table(data[[class]], data[[pred]])
-  confusion <- confusionMatrix(tab_class, mode = "everything")
-  # Save confusion matrix as data frame 
-  confusion_data <- as.data.frame(confusion[["table"]]) %>%
-    rename(actual = Var1, predicted = Var2) 
+  
   title <- paste("Confusion matrix in", dataset_name, "data", sep = " ")
+  table(data[[class]], data[[pred]]) %>% 
+    as.data.frame() %>% 
+    rename(actual = Var1, predicted = Var2) %>% 
+  # Save confusion matrix as data frame 
   # plot matrix
-  ggplot(confusion_data, aes(x = predicted, y = actual, fill = Freq)) + 
+    ggplot(., aes(x = predicted, y = actual, fill = Freq)) + 
     geom_tile() + 
     xlab("Predicted class") + 
     ylab("Actual class") +
@@ -117,6 +115,16 @@ plot_confusion <- function(data, class = "class", pred = "pred",
 
 plot_confusion(data = train, dataset_name = "train")
 plot_confusion(data = val, dataset_name = "val")
+
+
+
+topfeatures(
+  train_dfm,
+  n = 10,
+  decreasing = TRUE,
+  scheme = c("count", "docfreq"),
+  groups = docvars(train_dfm)$class
+)
 
 
 
