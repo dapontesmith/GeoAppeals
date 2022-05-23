@@ -5,9 +5,13 @@ library(caret) # for confusion matrix
 library(quanteda)
 library(quanteda.textstats)
 library(quanteda.textmodels)
+library(patchwork) # for plots 
 
 # read in full dataframe 
 df <- read.csv("GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv")
+
+# note - 0 = policy, 1 = symbolic, 99 = NA 
+
 
 annotated <- df %>% 
   as_tibble() %>% 
@@ -16,14 +20,21 @@ annotated <- df %>%
                 ends_with("annotation"),
                 is_training, is_validation) %>% 
   # fill majority annotation with placeholder for now 
-  mutate(docid = 1:n())
+  mutate(docid = 1:n()) %>% 
+  # get only snetneces in 1 of hte three categories
+  filter(majority_annotation %in% c(0, 1, 99)) %>% 
+  mutate(majority_annotation_cat = case_when(
+    majority_annotation == 0 ~ "policy",
+    majority_annotation == 1 ~ "symbolic",
+    majority_annotation == 99 ~ "NA"
+  ))
 
 train <- annotated %>% 
   filter(is_training == 1) %>% 
-  select(sentence = sentence_w_mention, class = majority_annotation, docid)
+  select(sentence = sentence_w_mention, class = majority_annotation_cat, docid)
 val <- annotated %>% 
   filter(is_validation == 1) %>% 
-  select(sentence = sentence_w_mention, class = majority_annotation, docid)
+  select(sentence = sentence_w_mention, class = majority_annotation_cat, docid)
 
 create_dfm <- function(data, text_var, docnames_var,
                        class_var){
@@ -91,7 +102,7 @@ train <- train_out[[1]] ; acc_train <- train_out[[2]]
 
 acc_train > acc_val
 
-
+# function to plot the confusion matrix
 plot_confusion <- function(data, class = "class", 
                            pred = "pred",
                            dataset_name){
@@ -113,9 +124,9 @@ plot_confusion <- function(data, class = "class",
   
 }
 
-plot_confusion(data = train, dataset_name = "train")
-plot_confusion(data = val, dataset_name = "val")
-
+train_confusion <- plot_confusion(data = train, dataset_name = "train")
+val_confusion <- plot_confusion(data = val, dataset_name = "validation")
+train_confusion + val_confusion
 
 
 topfeatures(
