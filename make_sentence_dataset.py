@@ -8,9 +8,15 @@ import csv
 import random
 from datetime import datetime
 
+from datetime import date
+today_for_filenames = date.today()
+curr_date_out = str(today_for_filenames.strftime("%Y%m%d"))
+
 random.seed(10)
 
 MIN_SENTENCE_LEN = 15
+
+
 
 def splitWithIndices(s, c=' '):
     p = 0
@@ -233,14 +239,29 @@ if __name__ == "__main__":
     print("2: " + str(sentence_level_df.shape))
     
     sentence_level_df['temp_unique_id'] = sentence_level_df.index
+    sentence_level_df['is_training'] = 0
 
     annotated_sentences_df = sentence_level_df[sentence_level_df['is_annotated'] == 1]
     print("3: " + str(annotated_sentences_df.shape))
-    train_annotated_sentences_df = annotated_sentences_df.sample(n=int(annotated_sentences_df.shape[0]*0.7))
-    print("4: " + str(train_annotated_sentences_df.shape))
-    train_annotated_sentences_df['is_training'] = 1
-    train_annotated_sentences_df = train_annotated_sentences_df[['temp_unique_id', 'is_training']]
-    sentence_level_df = sentence_level_df.merge(train_annotated_sentences_df, how='left', on='temp_unique_id')
+
+    unique_classes = annotated_sentences_df['majority_annotation'].unique().tolist()
+    for unique_class in unique_classes:
+        train_annotated_sentences_df_for_class = annotated_sentences_df[annotated_sentences_df['majority_annotation'] == unique_class]
+        train_annotated_sentences_df_for_class = train_annotated_sentences_df_for_class.sample(n=int(0.7*(train_annotated_sentences_df_for_class.shape[0])))
+        train_col_name = 'is_training_for_' + str(unique_class).replace("/", "_")
+        train_annotated_sentences_df_for_class[train_col_name] = 1
+        print(train_annotated_sentences_df_for_class.shape[0])
+        train_annotated_sentences_df_for_class = train_annotated_sentences_df_for_class[['temp_unique_id', train_col_name]]
+        sentence_level_df = sentence_level_df.merge(train_annotated_sentences_df_for_class, how='left', on='temp_unique_id')
+        print(sentence_level_df[sentence_level_df[train_col_name] == 1].shape)
+        print("=====")
+        sentence_level_df.loc[sentence_level_df[train_col_name] == 1, "is_training"] = 1
+
+    # train_annotated_sentences_df = annotated_sentences_df.sample(n=int(annotated_sentences_df.shape[0]*0.7))
+    # print("4: " + str(train_annotated_sentences_df.shape))
+    # train_annotated_sentences_df['is_training'] = 1
+    # train_annotated_sentences_df = train_annotated_sentences_df[['temp_unique_id', 'is_training']]
+    # sentence_level_df = sentence_level_df.merge(train_annotated_sentences_df, how='left', on='temp_unique_id')
     print("5: " + str(sentence_level_df.shape))
     sentence_level_df.loc[sentence_level_df['is_training'] != 1, 'is_training'] = 0
     sentence_level_df['is_validation'] = 0
@@ -251,7 +272,7 @@ if __name__ == "__main__":
     sentence_level_df['Date'] = sentence_level_df['Date'].astype(str)
     sentence_level_df['Subject'] = sentence_level_df['Subject'].astype(str)
 
-    sentence_level_df.to_csv("/Users/jacob/Dropbox/GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv", quotechar='"', index=False)
+    sentence_level_df.to_csv("/Users/jacob/Dropbox/GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations_[" + curr_date_out + "].csv", quotechar='"', index=False)
     print(sentence_level_df[sentence_level_df['is_annotated'] == 1].shape)
     print(sentence_level_df[sentence_level_df['is_training'] == 1].shape)
     print(sentence_level_df[sentence_level_df['is_validation'] == 1].shape)
@@ -261,3 +282,8 @@ if __name__ == "__main__":
     print(sentence_level_df[sentence_level_df['jw_annotation_standardized'].notnull()].shape)
     print(sentence_level_df[sentence_level_df['lt_annotation_standardized'].notnull()].shape)
     print(sentence_level_df[sentence_level_df['nds_annotation_standardized'].notnull()].shape)
+
+    annotated_df = sentence_level_df[sentence_level_df['is_annotated'] == 1]
+    print(pd.crosstab(annotated_df['is_training'], annotated_df['majority_annotation']))
+
+
