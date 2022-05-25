@@ -5,14 +5,13 @@ library(caret) # for confusion matrix
 library(quanteda)
 library(quanteda.textstats)
 library(quanteda.textmodels)
+library(quanteda.textplots)
 library(patchwork) # for plots 
 
 # read in full dataframe 
-df <- read.csv("GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations.csv")
+df <- read.csv("GeoAppeals/data/sentence_level_newsletter_dataset_with_annotations_[20220523].csv")
 
 # note - 0 = policy, 1 = symbolic, 99 = NA 
-
-
 annotated <- df %>% 
   as_tibble() %>% 
   filter(is_annotated == 1) %>% 
@@ -56,7 +55,8 @@ create_dfm <- function(data, text_var, docnames_var,
   dfm <- dfm(token, 
              tolower = TRUE, 
              stem = TRUE, 
-             remove = stopwords("english"))
+             remove = c(stopwords("english"),
+                        "fffc","u","â"))
   
   return(dfm)
   
@@ -137,6 +137,8 @@ topfeatures(
   groups = docvars(train_dfm)$class
 )
 
+
+textplot_wordcloud(train_dfm, min_count = 1, color ='red')  
 
 
 
